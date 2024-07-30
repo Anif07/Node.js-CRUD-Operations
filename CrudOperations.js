@@ -1,21 +1,11 @@
 const express = require("express");
-app = express();
+const app = express();
 let conn = require("./db.js");
 
 app.use(express.json());
 
-app.get("/books", (req, res) => {
-  conn.query("select * from Books", (err, data) => {
-    if (err) {
-      res.status(500).json(err);
-    } else {
-      res.status(200).json(data);
-    }
-  });
-});
-app.get("/books/:id", (req, res) => {
-  const id = req.params.id;
-  conn.query("select * from Books where id=?", [id], (err, data) => {
+app.get("/todos", (req, res) => {
+  conn.query("SELECT * FROM Todos", (err, data) => {
     if (err) {
       res.status(500).json(err);
     } else {
@@ -24,39 +14,57 @@ app.get("/books/:id", (req, res) => {
   });
 });
 
-app.post("/books", (req, res) => {
-  console.log(req.body);
-  const { id, title, author } = req.body;
-  conn.query("insert into Books values (?,?,?)", [id, title, author], (err) => {
+app.get("/todos/:id", (req, res) => {
+  const id = req.params.id;
+  conn.query("SELECT * FROM Todos WHERE id=?", [id], (err, data) => {
     if (err) {
-      console.log("failed", err);
+      res.status(500).json(err);
     } else {
-      res.send("posted successfully");
+      res.status(200).json(data);
     }
   });
 });
-app.put("/books/:id", (req, res) => {
-  const { title, author } = req.body;
-  const id = req.params.id;
+
+app.post("/todos", (req, res) => {
+  const { id, title, description } = req.body;
   conn.query(
-    `update Books set title='${title}', author='${author}' where id=${id}`,
+    "INSERT INTO Todos (id, title, description) VALUES (?, ?, ?)",
+    [id, title, description],
     (err) => {
       if (err) {
-        res.status(500).json(err);
+        console.log("Failed to create todo", err);
+        res.status(500).json("Failed to create todo");
       } else {
-        res.status(200).json("Updated successfully");
+        res.status(201).send("Todo created successfully");
       }
     }
   );
 });
-app.patch("/books/:id", (req, res) => {
-  const id = req.params.id;
-  const { title, author } = req.body;
 
-  if (!title && !author) {
+app.put("/todos/:id", (req, res) => {
+  const { title, description } = req.body;
+  const id = req.params.id;
+  conn.query(
+    "UPDATE Todos SET title=?, description=? WHERE id=?",
+    [title, description, id],
+    (err) => {
+      if (err) {
+        res.status(500).json(err);
+      } else {
+        res.status(200).json("Todo updated successfully");
+      }
+    }
+  );
+});
+
+app.patch("/todos/:id", (req, res) => {
+  const id = req.params.id;
+  const { title, description } = req.body;
+
+  if (!title && !description) {
     return res
       .status(400)
-      .json({ error: "At least one of title or author is required" });
+      .json({ error: "At least one of title or description is required" });
   }
 
   const fields = [];
@@ -67,34 +75,36 @@ app.patch("/books/:id", (req, res) => {
     values.push(title);
   }
 
-  if (author) {
-    fields.push("author = ?");
-    values.push(author);
+  if (description) {
+    fields.push("description = ?");
+    values.push(description);
   }
 
   values.push(id);
 
-  const query = `update Books set ${fields.join(", ")} where id=?`;
+  const query = `UPDATE Todos SET ${fields.join(", ")} WHERE id=?`;
 
   conn.query(query, values, (err) => {
     if (err) {
-      return res.status(200).json(err);
+      return res.status(500).json(err);
     }
-    res.json("Book updated successfully");
+    res.json("Todo updated successfully");
   });
 });
-app.delete("/books/:id", (req, res) => {
+
+app.delete("/todos/:id", (req, res) => {
   const id = req.params.id;
-  const query = "delete from Books where id=?";
+  const query = "DELETE FROM Todos WHERE id=?";
   conn.query(query, [id], (err) => {
     if (err) {
-      console.error("Error deleting book:", err);
-      res.status(500).json("not able to delte");
+      console.error("Error deleting todo:", err);
+      res.status(500).json("Failed to delete todo");
     } else {
-      res.status(200).json("Deleted successfully");
+      res.status(200).json("Todo deleted successfully");
     }
   });
 });
+
 app.listen(8080, () => {
-  console.log("server is listening in 8080 port");
+  console.log("Server is listening on port 8080");
 });
